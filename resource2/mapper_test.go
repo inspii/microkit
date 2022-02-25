@@ -20,7 +20,7 @@ func TestToMap(t *testing.T) {
 	}
 
 	fields := []string{"Id", "Content"}
-	formatted, err := ToMap(comment, fields)
+	formatted, err := toMapWithRelation(comment, fields)
 	if err != nil {
 		t.Error(err)
 	}
@@ -58,7 +58,7 @@ func TestToMapOfSlice(t *testing.T) {
 	}
 
 	fields := []string{"Id", "Content"}
-	result, err := ToMap(comments, fields)
+	result, err := toMapWithRelation(comments, fields)
 	if err != nil {
 		t.Error(err)
 	}
@@ -131,12 +131,12 @@ func TestLoadRelation(t *testing.T) {
 		PostId:  10,
 		UserId:  5,
 	}
-	node := &Node{
+	node := &node{
 		Name:   "comment",
 		Fields: []string{"id", "content"},
 	}
 
-	result, err := LoadRelation(comment, node)
+	result, err := loadRelation(comment, node)
 	if err != nil {
 		t.Error(err)
 	}
@@ -167,12 +167,12 @@ func TestLoadRelationArray(t *testing.T) {
 			UserId:  6,
 		},
 	}
-	node := &Node{
+	node := &node{
 		Name:   "comment",
 		Fields: []string{"id", "content"},
 	}
 
-	result, err := LoadRelation(comments, node)
+	result, err := loadRelation(comments, node)
 	if err != nil {
 		t.Error(err)
 	}
@@ -203,14 +203,14 @@ func TestLoadRelationEmbed(t *testing.T) {
 		PostId:  10,
 		UserId:  5,
 	}
-	node := &Node{
+	node := &node{
 		Name:   "comment",
 		Fields: []string{"id", "content"},
-		Children: []*Node{
+		Children: []*node{
 			{
 				Name:   "post",
 				Fields: []string{"id", "title", "content"},
-				Children: []*Node{
+				Children: []*node{
 					{
 						Name:   "user",
 						Fields: []string{"id", "name"},
@@ -220,7 +220,7 @@ func TestLoadRelationEmbed(t *testing.T) {
 		},
 	}
 
-	result, err := LoadRelation(comment, node)
+	result, err := loadRelation(comment, node)
 	if err != nil {
 		t.Error(err)
 	}

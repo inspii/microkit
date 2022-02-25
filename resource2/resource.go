@@ -1,61 +1,43 @@
 package resource
 
 import (
-	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
-var ResultReservedWord = []string{"fields", "offset", "limit", "sort"}
-
-var fieldExp = regexp.MustCompile(`([\w]+[:\w]*|\*)(\.offset\([0-9]+\))?(\.limit\([0-9]+\))?(\.order\([\w-]+\))?({(\w,*|\*,*)*})?`)
+// 平面：
+// 		id,name
+// 嵌套：
+// 		id,name,user{id,name}
+//     	id,name,user:address{id,city,street}
+// 嵌套分页：
+//      id,name,user.offset(1).limit(5).sort(-id){id,name}
+var fieldExp = regexp.MustCompile(`([\w]+[:\w]*|\*)(\.offset\([0-9]+\))?(\.limit\([0-9]+\))?(\.sort\([\w-]+\))?({(\w,*|\*,*)*})?`)
 
 type node struct {
 	Name        string
 	Fields      []string
-	Offset      int64
-	Limit       int64
+	Offset      int
+	Limit       int
 	Sorts       []string
 	HasChildren bool
+	Children    []*node
 }
 
-type Node struct {
-	Name     string
-	Fields   []string
-	Offset   int64
-	Limit    int64
-	Sorts    []string
-	Children []*Node
+func parseFields(fields []string, offset int, limit int, sorts []string) *node {
+	return parse("", fields, offset, limit, sorts)
 }
 
-func ParseResult(request *http.Request) *Node {
-	sorts := strings.Split(request.URL.Query().Get("sort"), ",")
-	offset, _ := strconv.ParseInt(request.URL.Query().Get("offset"), 10, 64)
-	limit, _ := strconv.ParseInt(request.URL.Query().Get("limit"), 10, 64)
-	if offset <= 0 {
-		offset = 0
-	}
-	if limit <= 0 {
-		limit = 10
-	}
-
-	fields := fieldExp.FindAllString(request.URL.Query().Get("fields"), -1)
-	node := ParseFields("", fields, offset, limit, sorts)
-
-	return node
-}
-
-func ParseFields(name string, fields []string, offset int64, limit int64, sorts []string) *Node {
-	currentNode := Node{
-		Name:   name,
+func parse(nodeName string, fields []string, offset int, limit int, sorts []string) *node {
+	currentNode := node{
+		Name:   nodeName,
 		Offset: offset,
 		Limit:  limit,
 		Sorts:  sorts,
 	}
 
 	children := make(map[string][]node)
-
 	for _, field := range fields {
 		matches := fieldExp.FindStringSubmatch(field)
 		if matches == nil {
@@ -67,18 +49,13 @@ func ParseFields(name string, fields []string, offset int64, limit int64, sorts 
 			names := strings.Split(matches[1], ":")
 			nodeName := names[0]
 			child := child(field)
-
-			if _, ok := children[nodeName]; ok {
-				children[nodeName] = append(children[nodeName], child)
-			} else {
-				children[nodeName] = []node{child}
-			}
+			children[nodeName] = append(children[nodeName], child)
 		}
 	}
 
 	for name, nodes := range children {
 		var childFields []string
-		var childOffset, childLimit int64
+		var childOffset, childLimit int
 		var childSorts []string
 		for _, node := range nodes {
 			if !node.HasChildren {
@@ -88,7 +65,7 @@ func ParseFields(name string, fields []string, offset int64, limit int64, sorts 
 			}
 			childFields = append(childFields, node.Fields...)
 		}
-		child := ParseFields(name, childFields, childOffset, childLimit, childSorts)
+		child := parse(name, childFields, childOffset, childLimit, childSorts)
 		currentNode.Children = append(currentNode.Children, child)
 	}
 
@@ -114,10 +91,10 @@ func child(field string) (child node) {
 			Name: names[0],
 		}
 		if offset, ok := args["offset"]; ok {
-			child.Offset, _ = strconv.ParseInt(offset, 10, 64)
+			child.Offset, _ = strconv.Atoi(offset)
 		}
 		if limit, ok := args["limit"]; ok {
-			child.Limit, _ = strconv.ParseInt(limit, 10, 64)
+			child.Limit, _ = strconv.Atoi(limit)
 		}
 		if fields, ok := args["fields"]; ok {
 			child.Fields = strings.Split(fields, ",")

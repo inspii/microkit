@@ -3,24 +3,29 @@ package resource
 import (
 	"encoding/json"
 	"errors"
+	"github.com/inspii/microkit/types"
 	"reflect"
 	"strings"
 )
 
-func ToMap(entity interface{}, fields []string) (interface{}, error) {
-	node := ParseFields("", fields, 0, 0, []string{})
-	return LoadRelation(entity, node)
+type mapAction interface {
+	AfterMap(nodeMap map[string]interface{}, nodeFields []string)
 }
 
-func LoadRelation(entity interface{}, node *Node) (interface{}, error) {
-	if isNil(entity) {
+func toMapWithRelation(entity interface{}, fields []string) (interface{}, error) {
+	tree := parseFields(fields, 0, 0, []string{})
+	return loadRelation(entity, tree)
+}
+
+func loadRelation(entity interface{}, node *node) (interface{}, error) {
+	if types.IsNil(entity) {
 		return nil, nil
 	}
 	if reflect.TypeOf(entity).Kind() == reflect.Slice {
 		s := reflect.ValueOf(entity)
 		list := make([]interface{}, 0)
 		for i := 0; i < s.Len(); i++ {
-			itemData, err := LoadRelation(s.Index(i).Interface(), node)
+			itemData, err := loadRelation(s.Index(i).Interface(), node)
 			if err != nil {
 				return nil, err
 			}
@@ -40,7 +45,7 @@ func LoadRelation(entity interface{}, node *Node) (interface{}, error) {
 		return nil, nil
 	}
 	for _, child := range node.Children {
-		if isNil(child) {
+		if types.IsNil(child) {
 			continue
 		}
 		r := reflect.ValueOf(entity)
@@ -50,7 +55,7 @@ func LoadRelation(entity interface{}, node *Node) (interface{}, error) {
 		if methodValue.IsValid() && methodType.NumIn() == 0 && methodType.NumOut() == 1 {
 			ret := methodValue.Call([]reflect.Value{})
 			if len(ret) == 1 {
-				entityMap[child.Name], err = LoadRelation(ret[0].Interface(), child)
+				entityMap[child.Name], err = loadRelation(ret[0].Interface(), child)
 			}
 		}
 	}
@@ -90,14 +95,9 @@ func toMap(entity interface{}, fields []string) (interface{}, error) {
 		}
 	}
 
-	r := reflect.ValueOf(entity)
-	if methodValue := r.MethodByName("ToMap"); methodValue.IsValid() {
-		switch method := methodValue.Interface().(type) {
-		case func(map[string]interface{}, []string) map[string]interface{}:
-			return method(result, fields), nil
-		}
+	if action, ok := entity.(mapAction); ok {
+		action.AfterMap(result, fields)
 	}
-
 	return result, nil
 }
 
@@ -140,9 +140,4 @@ func substr(str string, start, length int) string {
 
 func ucFirst(str string) string {
 	return strings.ToUpper(substr(str, 0, 1)) + substr(str, 1, 0)
-}
-
-func isNil(a interface{}) bool {
-	defer func() { recover() }()
-	return a == nil || reflect.ValueOf(a).IsNil()
 }

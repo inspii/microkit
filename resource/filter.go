@@ -81,3 +81,21 @@ func ParseFilters(values *url.Values, exceptField []string) []Filter {
 
 	return filters
 }
+
+func inArrayString(needle string, array []string) bool {
+	if len(array) == 0 {
+		return true
+	}
+	for _, item := range array {
+		if item == "*" {
+			return true
+		}
+	}
+	for _, item := range array {
+		if needle == item {
+			return true
+		}
+	}
+
+	return false
+}

@@ -2,8 +2,6 @@ package resource
 
 import (
 	"fmt"
-	"net/http"
-	"net/url"
 	"strings"
 	"testing"
 )
@@ -56,7 +54,7 @@ func TestChild(t *testing.T) {
 
 func TestParseFields(t *testing.T) {
 	fields := []string{"id", "title", "comments{id,content,*}", "comments:categories.offset(10).limit(10){id,title}"}
-	aNode := ParseFields("post", fields, 0, 10, []string{})
+	aNode := parse("post", fields, 0, 10, []string{})
 	printNode(aNode, 0)
 	assertNode(t, aNode, []node{
 		{
@@ -83,30 +81,6 @@ func TestParseFields(t *testing.T) {
 	})
 }
 
-func TestParse(t *testing.T) {
-	req := &http.Request{Method: "GET"}
-	req.URL, _ = url.Parse("http://www.test.com/search?fields=id,title,comments{id,content}&offset=0&limit=10&sort=-pop,-id")
-
-	aNode := ParseResult(req)
-	printNode(aNode, 0)
-	assertNode(t, aNode, []node{
-		{
-			Name:   "",
-			Fields: []string{"id", "title"},
-			Offset: 0,
-			Limit:  10,
-			Sorts:  []string{"-pop", "-id"},
-		},
-		{
-			Name:   "comments",
-			Fields: []string{"id", "content"},
-			Offset: 0,
-			Limit:  0,
-			Sorts:  []string{},
-		},
-	})
-}
-
 func arrayStringCompare(array1, array2 []string) bool {
 	len1 := len(array1)
 	len2 := len(array2)
@@ -123,7 +97,7 @@ func arrayStringCompare(array1, array2 []string) bool {
 	return true
 }
 
-func assertNode(t *testing.T, node *Node, structures []node) []node {
+func assertNode(t *testing.T, node *node, structures []node) []node {
 	if structures == nil || len(structures) == 0 {
 		return nil
 	}
@@ -145,7 +119,7 @@ func assertNode(t *testing.T, node *Node, structures []node) []node {
 	return structures
 }
 
-func printNode(node *Node, paddingSpace int) {
+func printNode(node *node, paddingSpace int) {
 	padding := strings.Repeat(" ", paddingSpace)
 	fmt.Printf("%s{\n", padding)
 	fmt.Printf("%sName:%s\n", padding, node.Name)
