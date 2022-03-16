@@ -8,7 +8,6 @@ type relationEntry struct {
 }
 
 // Relation 处理多对多关系
-// 如果 a, b, relation 不是切片或数组，将奔溃，而不隐瞒该错误
 //
 // 例如：
 //  有书籍（Book），作者（Author）及书籍作者关系（BookAuthor）对象，需要给书籍对象填入所有关联的作者对象：
@@ -43,10 +42,10 @@ type relationEntry struct {
 //			books[i].Authors = append(books[i].Authors, authors[j])
 //		},
 //	)
-func Relation(
-	a interface{}, getIDOfA func(i int) (aID int),
-	b interface{}, getIDOfB func(i int) (bID int),
-	relation interface{}, getRelation func(i int) (aID, bID int),
+func Relation[T1 any, T2 any, T3 any](
+	a []T1, getIDOfA func(i int) (aID int),
+	b []T2, getIDOfB func(i int) (bID int),
+	relation []T3, getRelation func(i int) (aID, bID int),
 	do func(aIndex, bIndex int),
 ) {
 	aIDMap := make(map[int]relationEntry)

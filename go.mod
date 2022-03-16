@@ -1,6 +1,6 @@
 module github.com/inspii/microkit
 
-go 1.16
+go 1.18
 
 require (
 	github.com/gin-contrib/cors v1.3.0

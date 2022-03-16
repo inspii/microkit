@@ -6,19 +6,23 @@ import (
 	"strings"
 )
 
+type Integer interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
+}
+
 // StrInts 以","分隔的整数数组
 // 常用于HTTP请求中表示id列表，或数据库字段存放id列表，
 type StrInts string
 
 // NewStrInts 从切片新建 StrInts
-func NewStrInts(slice []int) StrInts {
+func NewStrInts[T Integer](slice []T) StrInts {
 	if len(slice) == 0 {
 		return ""
 	}
 
 	str := ""
 	for _, v := range slice {
-		str += strconv.Itoa(v) + ","
+		str += strconv.Itoa(int(v)) + ","
 	}
 	return StrInts(str[0 : len(str)-1])
 }
@@ -43,8 +47,7 @@ func (s StrInts) Slice() []int {
 }
 
 // Each 对任意类型的切片或数组，进行遍历执行
-// 如果不是切片或数组，将奔溃，而不隐瞒该错误
-func Each(slice interface{}, f func(i int)) {
+func Each[T any](slice []T, f func(i int)) {
 	rv := reflect.ValueOf(slice)
 	size := rv.Len()
 
@@ -54,8 +57,7 @@ func Each(slice interface{}, f func(i int)) {
 }
 
 // Ints 从任意类型的切片或数组，生成Int数组
-// 如果不是切片或数组，将奔溃，而不隐瞒该错误
-func Ints(slice interface{}, f func(i int) int) []int {
+func Ints[T any](slice []T, f func(i int) int) []int {
 	rv := reflect.ValueOf(slice)
 	size := rv.Len()
 	ints := make([]int, 0, size)
@@ -66,8 +68,7 @@ func Ints(slice interface{}, f func(i int) int) []int {
 }
 
 // IntsMap 从任意类型的切片或数组，生成映射表
-// 如果不是切片或数组，将奔溃，而不隐瞒该错误
-func IntsMap(slice interface{}, mapper func(i int) (key, value int)) map[int][]int {
+func IntsMap[T any](slice []T, mapper func(i int) (key, value int)) map[int][]int {
 	result := make(map[int][]int)
 
 	rv := reflect.ValueOf(slice)
